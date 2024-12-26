@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"secretary_bot/internal/bot"
-	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -16,8 +15,7 @@ func main() {
 		log.Fatalf("load env: %s", err)
 	}
 
-	owner, err := strconv.Atoi(os.Getenv("BOT_OWNER_ID"))
-	bot, err := bot.New(os.Getenv("BOT_TOKEN"), int64(owner))
+	bot, err := bot.New(os.Getenv("BOT_TOKEN"))
 	if err != nil {
 		log.Fatalf("init bot: %s", err)
 	}

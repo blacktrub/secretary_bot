@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	timeout   = 10
-	ownerName = "Дмитрий Евгеньевич"
+	timeout = 10
 )
 
 var (
@@ -18,19 +17,17 @@ var (
 )
 
 type bot struct {
-	api     *api.BotAPI
-	ownerID int64
+	api *api.BotAPI
 }
 
-func New(token string, ownerID int64) (*bot, error) {
+func New(token string) (*bot, error) {
 	b, err := api.NewBotAPI(token)
 	if err != nil {
 		return nil, fmt.Errorf("init bot: %w", err)
 	}
 
 	return &bot{
-		api:     b,
-		ownerID: ownerID,
+		api: b,
 	}, nil
 }
 
@@ -44,13 +41,8 @@ func (b *bot) Run(ctx context.Context) error {
 		case update := <-ch:
 			msg := update.Message
 			if msg != nil && msg.ReplyToMessage != nil && msgRegex.Match([]byte(msg.Text)) {
-				reply := "Записала!"
-				if msg.From.ID == b.ownerID {
-					reply = fmt.Sprintf("%s, записала!", ownerName)
-
-				}
-
-				b.reply(msg.Chat.ID, msg.MessageID, reply)
+				ans := newAnswer(msg.From.ID)
+				b.reply(msg.Chat.ID, msg.MessageID, ans.Msg())
 			}
 		case <-ctx.Done():
 			return ctx.Err()

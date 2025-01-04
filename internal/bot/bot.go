@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"secretary_bot/internal/dto"
+	"time"
 
 	api "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -17,17 +19,22 @@ var (
 )
 
 type bot struct {
-	api *api.BotAPI
+	api  *api.BotAPI
+	repo repository
 }
 
-func New(token string) (*bot, error) {
+func New(
+	token string,
+	repo repository,
+) (*bot, error) {
 	b, err := api.NewBotAPI(token)
 	if err != nil {
 		return nil, fmt.Errorf("init bot: %w", err)
 	}
 
 	return &bot{
-		api: b,
+		api:  b,
+		repo: repo,
 	}, nil
 }
 
@@ -41,6 +48,18 @@ func (b *bot) Run(ctx context.Context) error {
 		case update := <-ch:
 			msg := update.Message
 			if msg != nil && msg.ReplyToMessage != nil && msgRegex.Match([]byte(msg.Text)) {
+				err := b.repo.SaveMessage(ctx, dto.Message{
+					UserID:    msg.From.ID,
+					ChatID:    msg.Chat.ID,
+					Name:      msg.From.String(),
+					Message:   msg.ReplyToMessage.Text,
+					CreatedAt: time.Now(),
+				})
+				if err != nil {
+					fmt.Printf("save err: %s\n", err)
+					continue
+				}
+
 				ans := newAnswer(msg.From.ID)
 				b.reply(msg.Chat.ID, msg.MessageID, ans.Msg())
 			}

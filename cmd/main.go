@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("load env: %s", err)
 	}
 
-	bot, err := bot.New(os.Getenv("BOT_TOKEN"))
+	bot, err := bot.New(os.Getenv("BOT_TOKEN"), repo)
 	if err != nil {
 		log.Fatalf("init bot: %s", err)
 	}

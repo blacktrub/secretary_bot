@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"secretary_bot/internal/aliaser"
 	"secretary_bot/internal/bot"
 	"secretary_bot/internal/repository"
 
@@ -31,7 +32,11 @@ func main() {
 		log.Fatalf("load env: %s", err)
 	}
 
-	bot, err := bot.New(os.Getenv("BOT_TOKEN"), repo)
+	bot, err := bot.New(
+		os.Getenv("BOT_TOKEN"),
+		repo,
+		aliaser.New(),
+	)
 	if err != nil {
 		log.Fatalf("init bot: %s", err)
 	}

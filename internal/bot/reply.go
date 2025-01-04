@@ -3,14 +3,8 @@ package bot
 import (
 	"fmt"
 	"math/rand"
-	"os"
-	"strconv"
 	"strings"
 	"time"
-)
-
-const (
-	ownerName = "Дмитрий Евгеньевич"
 )
 
 var answerOptions = []string{
@@ -21,32 +15,27 @@ var answerOptions = []string{
 	"Они не знают с кем связались.",
 }
 
-type answer struct {
-	personal bool
+type answerBuilder struct {
+	aliaser aliaser
 }
 
-func newAnswer(userID int64) answer {
-	owner, err := strconv.Atoi(os.Getenv("BOT_OWNER_ID"))
-
-	var personal bool
-	if err == nil && userID == int64(owner) {
-		personal = true
-	}
-
-	return answer{
-		personal: personal,
+func newAnswer(aliaser aliaser) answerBuilder {
+	return answerBuilder{
+		aliaser: aliaser,
 	}
 }
 
-func (a answer) Msg() string {
+func (a answerBuilder) Msg(userID int64) string {
 	var b strings.Builder
-	if a.personal {
-		b.WriteString(fmt.Sprintf("%s, ", ownerName))
+	var personal bool
+	if alias := a.aliaser.Alias(userID); alias != "" {
+		b.WriteString(fmt.Sprintf("%s, ", alias))
+		personal = true
 	}
 
 	r := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
 	m := answerOptions[r.Intn(len(answerOptions)-1)]
-	if a.personal {
+	if personal {
 		m = strings.ToLower(m)
 	}
 

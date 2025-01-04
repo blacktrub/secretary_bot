@@ -19,13 +19,15 @@ var (
 )
 
 type bot struct {
-	api  *api.BotAPI
-	repo repository
+	api           *api.BotAPI
+	repo          repository
+	answerBuilder answerBuilder
 }
 
 func New(
 	token string,
 	repo repository,
+	aliaser aliaser,
 ) (*bot, error) {
 	b, err := api.NewBotAPI(token)
 	if err != nil {
@@ -35,6 +37,9 @@ func New(
 	return &bot{
 		api:  b,
 		repo: repo,
+		answerBuilder: answerBuilder{
+			aliaser: aliaser,
+		},
 	}, nil
 }
 
@@ -63,8 +68,7 @@ func (b *bot) Run(ctx context.Context) error {
 					continue
 				}
 
-				ans := newAnswer(msg.From.ID)
-				b.reply(msg.Chat.ID, msg.MessageID, ans.Msg())
+				b.reply(msg.Chat.ID, msg.MessageID, b.answerBuilder.Msg(msg.From.ID))
 			}
 		case <-ctx.Done():
 			return ctx.Err()

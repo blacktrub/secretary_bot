@@ -48,12 +48,15 @@ func (b *bot) Run(ctx context.Context) error {
 		case update := <-ch:
 			msg := update.Message
 			if msg != nil && msg.ReplyToMessage != nil && msgRegex.Match([]byte(msg.Text)) {
+				reply := msg.ReplyToMessage
 				err := b.repo.SaveMessage(ctx, dto.Message{
-					UserID:    msg.From.ID,
-					ChatID:    msg.Chat.ID,
-					Name:      msg.From.String(),
-					Message:   msg.ReplyToMessage.Text,
-					CreatedAt: time.Now(),
+					ReporterID:   msg.From.ID,
+					ReporterName: msg.From.String(),
+					UserID:       reply.From.ID,
+					UserName:     reply.From.String(),
+					ChatID:       msg.Chat.ID,
+					Message:      reply.Text,
+					CreatedAt:    time.Now(),
 				})
 				if err != nil {
 					fmt.Printf("save err: %s\n", err)

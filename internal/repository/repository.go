@@ -11,9 +11,11 @@ import (
 const schema = `
     create table if not exists message (
         id integer primary key autoincrement,
+        reporter_id integer,
+        reporter_name string,
         user_id integer,
+        user_name text,
         chat_id integer,
-        name text,
         message text,
         created_at integer
     )
@@ -42,8 +44,24 @@ func (r *repo) Init(ctx context.Context) error {
 func (r *repo) SaveMessage(ctx context.Context, msg dto.Message) error {
 	const query = `
         insert into message 
-        (user_id, chat_id, name, message, created_at) 
-        values (:user_id, :chat_id, :name, :message, :created_at)
+        (
+            reporter_id,
+            reporter_name,
+            user_id,
+            user_name,
+            chat_id,
+            message,
+            created_at
+        ) 
+        values (
+            :reporter_id,
+            :reporter_name,
+            :user_id,
+            :user_name,
+            :chat_id,
+            :message,
+            :created_at
+        )
     `
 
 	if _, err := r.db.NamedExecContext(ctx, query, msg); err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"secretary_bot/internal/dto"
+	"strings"
 	"time"
 
 	api "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -15,7 +16,8 @@ const (
 )
 
 var (
-	msgRegex = regexp.MustCompile(`.*([на|На]\sретро).*`)
+	msgRegex          = regexp.MustCompile(`.*([на|На]\sретро).*`)
+	retroCommandRegex = regexp.MustCompile(`^\/.*retro$`)
 )
 
 type bot struct {
@@ -61,14 +63,61 @@ func (b *bot) Run(ctx context.Context) error {
 					UserName:     reply.From.String(),
 					ChatID:       msg.Chat.ID,
 					Message:      reply.Text,
-					CreatedAt:    time.Now(),
+					CreatedAt:    time.Now().Unix(),
 				})
 				if err != nil {
 					fmt.Printf("save err: %s\n", err)
 					continue
 				}
 
-				b.reply(msg.Chat.ID, msg.MessageID, b.answerBuilder.Msg(msg.From.ID))
+				if err := b.reply(msg.Chat.ID, msg.MessageID, escape(b.answerBuilder.Msg(msg.From.ID))); err != nil {
+					fmt.Printf("reply err: %s\n", err)
+					continue
+				}
+			}
+
+			if msg != nil && retroCommandRegex.Match([]byte(msg.Text)) {
+				messages, err := b.repo.Retro(ctx, msg.Chat.ID, time.Now().Add(-10*24*time.Hour))
+				if err != nil {
+					fmt.Printf("get messages err: %s\n", err)
+					continue
+				}
+
+				byReporter := make(map[int64]map[int64][]dto.Message, len(messages))
+				for _, msg := range messages {
+					if _, ok := byReporter[msg.ReporterID]; !ok {
+						byReporter[msg.ReporterID] = map[int64][]dto.Message{}
+					}
+
+					byReporter[msg.ReporterID][msg.UserID] = append(byReporter[msg.ReporterID][msg.UserID], msg)
+				}
+
+				var report strings.Builder
+				for _, messagesByReporter := range byReporter {
+
+					var first dto.Message
+					for _, byUser := range messagesByReporter {
+						for _, msg := range byUser {
+							first = msg
+							break
+						}
+						break
+					}
+
+					report.WriteString(fmt.Sprintf("*%s зарепортил:*\n", first.ReporterName))
+
+					for _, messagesByUser := range messagesByReporter {
+						firstByUser := messagesByUser[0]
+						report.WriteString(fmt.Sprintf("_От %s_\n", escape(firstByUser.UserName)))
+						for _, msg := range messagesByUser {
+							report.WriteString(fmt.Sprintf(">>%s\n\n", escape(msg.Message)))
+						}
+					}
+
+					report.WriteString("\n")
+				}
+
+				b.reply(msg.Chat.ID, msg.MessageID, report.String())
 			}
 		case <-ctx.Done():
 			return ctx.Err()
@@ -79,9 +128,14 @@ func (b *bot) Run(ctx context.Context) error {
 func (b *bot) reply(chatID int64, msgID int, text string) error {
 	msg := api.NewMessage(chatID, text)
 	msg.ReplyToMessageID = msgID
+	msg.ParseMode = api.ModeMarkdownV2
 	if _, err := b.api.Send(msg); err != nil {
 		return fmt.Errorf("reply: %w", err)
 	}
 
 	return nil
+}
+
+func escape(in string) string {
+	return api.EscapeText(api.ModeMarkdownV2, in)
 }
